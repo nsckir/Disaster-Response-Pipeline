@@ -8,6 +8,7 @@ from flask import render_template, request
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
 from plotly.graph_objs import Bar
+from plotly.graph_objs import Scatter
 from sqlalchemy import create_engine
 
 app = Flask(__name__)
@@ -28,6 +29,7 @@ def tokenize(text):
 # load data
 engine = create_engine('sqlite:///../data/DisasterResponse.db')
 df = pd.read_sql_table('DisasterResponse', engine)
+report = pd.read_sql_table('TestResults', engine).set_index('index')
 
 # load model
 model = joblib.load("../models/classifier.pkl")
@@ -37,30 +39,57 @@ model = joblib.load("../models/classifier.pkl")
 @app.route('/')
 @app.route('/index')
 def index():
-    
     # extract data needed for visuals
-    # TODO: Below is an example - modify to extract data for your own visuals
-    genre_counts = df.groupby('genre').count()['message']
-    genre_names = list(genre_counts.index)
-    
+
+    # 10 most imbalanced categories
+    categories = df.columns[4:]
+    pos_class = df[categories].mean().sort_values()[:10]*100
+    sorted_categories = pos_class.index[:10]
+
+    # Correlation of class imbalance and f1 score
+    f1 = report.loc[categories, 'f1-score'].sort_index()
+    imbalance = df[categories].mean().apply(lambda x: max(x, 1 - x)/min(x, 1 - x)).sort_index()
+
     # create visuals
-    # TODO: Below is an example - modify to create your own visuals
     graphs = [
         {
             'data': [
                 Bar(
-                    x=genre_names,
-                    y=genre_counts
+                    x=sorted_categories,
+                    y=pos_class
                 )
             ],
 
             'layout': {
-                'title': 'Distribution of Message Genres',
+                'title': '10 most imbalanced categories',
                 'yaxis': {
-                    'title': "Count"
+                    'title': "% of the messages"
                 },
                 'xaxis': {
-                    'title': "Genre"
+                    'title': "Category"
+                }
+            }
+        },
+
+        {
+            'data': [
+                Scatter(
+                    x=imbalance,
+                    y=f1,
+                    mode='markers',
+                    hovertext=imbalance.index
+
+
+                )
+            ],
+
+            'layout': {
+                'title': 'Correlation of category imbalance and f1 test score',
+                'yaxis': {
+                    'title': "f1 test score"
+                },
+                'xaxis': {
+                    'title': "imbalance (majority class/minority class)"
                 }
             }
         }
