@@ -31,21 +31,47 @@ def clean_data(df):
         df: cleaned dataframe. (pandas.Dataframe)
     """
 
+    # split each category in a column and extract column names
     categories = df['categories'].str.split(';', expand=True)
     row = categories.loc[0].str.split('-')
     category_colnames = [x[0] for x in row]
     categories.columns = category_colnames
+    print(f'Categories has {categories.shape[0]} rows and {categories.shape[1]} columns')
 
-    for column in categories:
+    for column in categories.columns:
         # set each value to be the last character of the string
         categories[column] = categories[column].str[-1:]
 
         # convert column from string to numeric
         categories[column] = pd.to_numeric(categories[column])
 
+        # drop constant columns
+        if categories[column].nunique() == 1:
+            categories.drop(column, axis=1, inplace=True)
+            print(f'Dropping category {column} because it is constant')
+
+    print(f'Categories has {categories.shape[0]} rows and {categories.shape[1]} columns')
+
+    # Category 'related' contains 0, 1 and 2 whereas all other 35 categories are binary.
+    # f1_macro score in GridSearchCV can't deal with multi target multiclass variables, therefore we will transform
+    # 'related' to one hot encoded
+    one_hot = []
+    for column in categories.columns:
+        if categories[column].nunique() > 2:
+            print(f'Creating one hot encoded columns for category {column} ')
+            one_hot.append(column)
+
+    categories = pd.get_dummies(categories, columns=one_hot, drop_first=True, prefix=one_hot)
+    print(f'Categories has {categories.shape[0]} rows and {categories.shape[1]} columns')
+
     df = df.drop('categories', axis=1)
     df = pd.concat([df, categories], axis=1)
+
+    print(f'Dropping {df.duplicated().sum()} duplicates')
     df = df.drop_duplicates()
+    print(f'Dropping {df[categories.columns].isna().sum(axis=1).sum()} rows with missing categories')
+    df = df.dropna(subset=categories.columns)
+    print(f'Final dataframe has {df.shape[0]} rows and {df.shape[1]} columns')
 
     return df
 

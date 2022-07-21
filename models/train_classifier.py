@@ -48,25 +48,6 @@ def load_data(database_filepath):
     non_categories = ['id', 'message', 'original', 'genre']
     categories = df.columns.drop(non_categories)
 
-    # Drop NAs
-    df = df.dropna(subset=categories)
-
-    # Drop constant columns
-    for cat in categories:
-        if df[cat].nunique() == 1:
-            categories = categories.drop(cat)
-            df = df.drop(cat, axis=1)
-
-    # Category 'related' contains 0, 1 and 2 whereas all other 35 categories are binary.
-    # f1_macro score in GridSearchCV can't deal with multi target multiclass variables, therefore we will transform
-    # 'related' to one hot encoded
-    one_hot = []
-    for cat in categories:
-        if df[cat].nunique() > 2:
-            one_hot.append(cat)
-
-    df = pd.get_dummies(df, columns=one_hot, drop_first=True, prefix=one_hot)
-
     X = df['message'].values
     Y = df.drop(non_categories, axis=1).values
     categories = df.columns.drop(non_categories)
