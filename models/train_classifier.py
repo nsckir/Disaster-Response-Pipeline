@@ -3,6 +3,7 @@ import re
 import sys
 
 import nltk
+import numpy as np
 import pandas as pd
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
@@ -30,6 +31,8 @@ nltk.download(['punkt',
                'omw-1.4',
                'stopwords'])
 
+np.random.seed(42)
+
 
 def load_data(database_filepath):
     """Loads the data  from a sqlite database
@@ -45,12 +48,10 @@ def load_data(database_filepath):
     engine = create_engine(''.join(['sqlite:///', database_filepath]))
     df = pd.read_sql_table('DisasterResponse', engine)
 
-    non_categories = ['id', 'message', 'original', 'genre']
-    categories = df.columns.drop(non_categories)
+    categories = df.columns[4:]
 
     X = df['message'].values
-    Y = df.drop(non_categories, axis=1).values
-    categories = df.columns.drop(non_categories)
+    Y = df[categories].values
 
     return X, Y, categories
 
@@ -144,6 +145,24 @@ def evaluate_model(model, X_test, Y_test, category_names):
     Y_pred = model.predict(X_test)
 
     print(classification_report(Y_test, Y_pred, target_names=category_names))
+    report = classification_report(Y_test, Y_pred, target_names=category_names, output_dict=True)
+    report_df = pd.DataFrame.from_dict(report, orient='index')
+
+    return report_df
+
+
+def save_results(results_df, database_filename):
+    """Saves test results to a sqlite database
+
+    Args:
+        results_df: test results. (pandas.Dataframe)
+        database_filename: path to the sqlite database
+
+    Returns:
+    """
+
+    engine = create_engine(''.join(['sqlite:///', database_filename]))
+    results_df.to_sql('TestResults', engine, index=True, if_exists='replace')
 
 
 def save_model(model, model_filepath):
@@ -182,7 +201,10 @@ def main():
         model.fit(X_train, Y_train)
 
         print('Evaluating model...')
-        evaluate_model(model, X_test, Y_test, category_names)
+        report_df = evaluate_model(model, X_test, Y_test, category_names)
+
+        print('Saving results...\n    DATABASE: {}'.format(database_filepath))
+        save_results(report_df, database_filepath)
 
         print('Saving model...\n    MODEL: {}'.format(model_filepath))
         save_model(model, model_filepath)
