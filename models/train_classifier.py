@@ -7,7 +7,8 @@ import pandas as pd
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
-from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report
 from sklearn.model_selection import GridSearchCV
@@ -104,7 +105,7 @@ def build_model():
     params = [
         {
             'vect__max_df': [0.5, 1.0],
-            'vect__max_features': [300, 1000, 1500],
+            'vect__max_features': [500, 1500, 3000],
             'vect__min_df': [1, 5, 10],
 
             'clf__estimator': [LogisticRegression()],
@@ -116,11 +117,11 @@ def build_model():
 
         {
             'vect__max_df': [0.5, 1.0],
-            'vect__max_features': [300, 1000, 1500],
+            'vect__max_features': [500, 1500, 3000],
             'vect__min_df': [1, 5, 10],
 
             'clf__estimator': [XGBClassifier()],
-            'clf__estimator__scale_pos_weight': [10, 25, 50],
+            'clf__estimator__scale_pos_weight': [1, 10, 20],
             'clf__estimator__n_jobs': [-1],
             'clf__estimator__objective': ['binary:logistic'],
             'clf__estimator__eval_metric': ['auc'],
